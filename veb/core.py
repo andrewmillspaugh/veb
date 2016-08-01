@@ -45,6 +45,20 @@ class VEB(object):
     if universe_size > 2:
       self.clusters = [None] * self.high(self.universe_size)
       self.summary = None
+  
+  def __contains__(self, x):
+    # the easy cases  
+    if not self.min:
+        return False
+    elif self.min == x:
+        return True
+
+    high = self.high(x)
+    low = self.low(x)
+    if self.clusters[high] is None:
+        return False
+    else:
+      return low in self.clusters[high]
 
   def floor(self, x):
     return int(math.floor(x // int(math.sqrt(self.universe_size))))
@@ -131,9 +145,19 @@ def test_data_structure(instance):
   # print('Average delete time is ' + str(sum(delete_times)/len(delete_times)))
 
 def main():
-  size = pow(2, 16)
-  test_data_structure(BitArray(size))
-  test_data_structure(VEB(size))
+  #size = pow(2, 16)
+  #test_data_structure(BitArray(size))
+  #test_data_structure(VEB(size))
+  baby_veb = VEB(64)
+  baby_veb.insert(3)
+  baby_veb.insert(9)
+  baby_veb.insert(37)
+  print(3 in baby_veb)
+  print(9 in baby_veb)
+  print(37 in baby_veb)
+  print(2 not in baby_veb)
+  print(10 not in baby_veb)
+  print(36 not in baby_veb)
 
 if __name__ == '__main__':
   main()
