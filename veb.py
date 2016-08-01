@@ -46,6 +46,9 @@ class VEB(object):
       self.clusters = [None] * self.high(self.universe_size)
       self.summary = None
 
+  def floor(self, x):
+    return int(math.floor(x // int(math.sqrt(self.universe_size))))
+
   def high(self, x):
     return x // int(math.sqrt(self.universe_size))
 
@@ -80,13 +83,12 @@ class VEB(object):
           self.clusters[high].insert(self.low(x))
       if x > self.max:
         self.max = max
-
-        #
       # the new x is bigger than the existing min, so we can blindly set it
       if x > self.max:
         self.max = x
 
   def next(self, x):
+    # this tree is empty, or x is the biggest in it
     if not self.min or x >= self.max:
       return None
     elif x <= self.min:
@@ -94,12 +96,13 @@ class VEB(object):
 
     high = self.high(x)
     low = self.low(x)
-  
-    if low <= self.clusters[high].max:
-      return high + self.clusters[high].next(low)
+    floor = self.floor(x)
+    cluster = self.clusters[floor]
+
+    if not cluster or low >= cluster.max:
+      return high + self.clusters[self.summary.next(floor)].min
     else:
-      ind = self.summary.next(high) 
-      return high + self.clusters[ind].min
+      return high + self.clusters[floor].next(low)
 
 def test(condition):
   if condition:
