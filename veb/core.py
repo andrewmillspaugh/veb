@@ -37,8 +37,9 @@ class VEB(object):
     self.universe_size = universe_size
     self.min = self.max = None
     self._universe_order = 1 << math.ceil(math.log2(self.universe_size) / 2)
-    self.clusters = [None] * self.high(self.universe_size)
-    self.summary = None
+    if self._universe_order > 1:
+      self.clusters = [None] * self.high(self.universe_size)
+      self.summary = None
 
   def __contains__(self, x):
     # the easy cases
@@ -67,7 +68,7 @@ class VEB(object):
     return x % self._universe_order
 
   def index(self, i, j):
-    return i*sqrt(self.universe_size) + j
+    return int(i*math.sqrt(self.universe_size) + j)
 
   # we need to insert both into the appropriate cluster as well
   # as insert into the summary structure, because we just inserted
@@ -76,7 +77,7 @@ class VEB(object):
   def insert(self, x):
     # if nothing is stored in min, lazily store x in the min (as well as the max).
     # this is the only case in which x doesn't have to be recursively inserted
-    if self.min == None:
+    if self.min == None or self._universe_order == 1:
       self.min = self.max = x
       return
 
@@ -128,7 +129,7 @@ class VEB(object):
     # we know the sucessor is in this cluster because we have a
     # valid cluster and the value we're looking for is smaller
     # than the max. So, simply return the sucessor in this cluster.
-    if cluster and low < cluster.max:
+    if cluster and element_index < cluster.max:
       element_index = cluster.next(element_index)
       return self.index(cluster_index, element_index)
 
@@ -137,9 +138,9 @@ class VEB(object):
     # than the max in the cluster. So, we'll instead look for the
     # next 1 bit in the summary structure, and then look through
     # that cluster for our successor
-    if cluster == None or low >= cluster.max:
+    if cluster == None or element_index >= cluster.max:
       cluster_index = self.summary.next(cluster_index)
-      element_index =  self.clusters[cluster_index].min
+      element_index = self.clusters[cluster_index].min
       return self.index(cluster_index, element_index)
 
 def test(condition):
@@ -169,19 +170,9 @@ def test_data_structure(instance):
   # print('Average delete time is ' + str(sum(delete_times)/len(delete_times)))
 
 def main():
-  #size = pow(2, 16)
-  #test_data_structure(BitArray(size))
-  #test_data_structure(VEB(size))
-  baby_veb = VEB(64)
-  baby_veb.insert(3)
-  baby_veb.insert(9)
-  baby_veb.insert(37)
-  print(3 in baby_veb)
-  print(9 in baby_veb)
-  print(37 in baby_veb)
-  print(2 not in baby_veb)
-  print(10 not in baby_veb)
-  print(36 not in baby_veb)
+  size = pow(2, 16)
+  test_data_structure(BitArray(size))
+  test_data_structure(VEB(size))
 
 if __name__ == '__main__':
   main()
