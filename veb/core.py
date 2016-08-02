@@ -45,13 +45,15 @@ class VEB(object):
     if universe_size > 2:
       self.clusters = [None] * self.high(self.universe_size)
       self.summary = None
-  
+
   def __contains__(self, x):
-    # the easy cases  
+    # the easy cases
     if not self.min:
-        return False
+      return False
     elif self.min == x:
-        return True
+      return True
+    elif x > self.universe_size - 1:
+      return False
 
     high = self.high(x)
     low = self.low(x)
@@ -70,6 +72,8 @@ class VEB(object):
     return x % int(math.sqrt(self.universe_size))
 
   def insert(self, x):
+    if x > self.universe_size - 1:
+      raise Exception('Cannot insert element ' + str(x) + ' (it is bigger than max size of ' + str(self.universe_size - 1) + ')')
     # if nothing is stored in min, lazily store x in the min (as well as the max)
     if self.min == None:
       self.min = self.max = x
@@ -95,8 +99,6 @@ class VEB(object):
           self.clusters[high].min = self.clusters[high].max = self.low(x)
         else:
           self.clusters[high].insert(self.low(x))
-      if x > self.max:
-        self.max = max
       # the new x is bigger than the existing min, so we can blindly set it
       if x > self.max:
         self.max = x

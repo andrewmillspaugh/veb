@@ -1,7 +1,7 @@
+import random
 import unittest
 
-import veb
-print(dir(veb))
+from veb import VEB
 
 class TestVEB(unittest.TestCase):
     def setUp(self):
@@ -9,7 +9,9 @@ class TestVEB(unittest.TestCase):
       self.veb = VEB(self.size)
     
     def test_insert(self):
-      vals = set(random.randint(0, self.size) for _ in range(self.size/2))
+      vals = set(random.randint(1, self.size - 1) for _ in range(self.size//2))
+      for x in vals:
+        self.veb.insert(x)
       for x in range(0, self.size):
         if x in vals:
           self.assertIn(x, self.veb)
