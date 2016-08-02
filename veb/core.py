@@ -4,8 +4,6 @@ import time
 import random
 from collections import defaultdict
 
-# O(1) insert/delete
-# O(n) next/prev
 class BitArray(object):
   def __init__(self, u):
     self.array = [0 for x in range(u)]
@@ -16,7 +14,7 @@ class BitArray(object):
   def delete(self, x):
     self.array[x] = 0
 
-  def next(self, x):
+  def successor(self, x):
     index = x + 1
     for val in self.array[x + 1:]:
       if val == 1:
@@ -24,7 +22,7 @@ class BitArray(object):
       else:
         index += 1
 
-  def prev(self, x):
+  def predecessor(self, x):
     index = x - 1
     for val in self.array[x - 1:0:-1]:
       if val == 1:
@@ -116,7 +114,7 @@ class VEB(object):
   # first, we look in x's cluster (clusters[high(x)]) and then
   # we look in the summary structure for the next 1 bit, and look
   # in that cluster for the first 1 bit (which will be the successor)
-  def next(self, x):
+  def successor(self, x):
     # this tree is empty, or x is the biggest in it
     if self.min is None or x >= self.max:
       return None
@@ -131,7 +129,7 @@ class VEB(object):
     # valid cluster and the value we're looking for is smaller
     # than the max. So, simply return the sucessor in this cluster.
     if cluster and element_index < cluster.max:
-      element_index = cluster.next(element_index)
+      element_index = cluster.successor(element_index)
       return self.index(cluster_index, element_index)
 
     # we know the successor isn't here, because either the cluster
@@ -140,12 +138,12 @@ class VEB(object):
     # next 1 bit in the summary structure, and then look through
     # that cluster for our successor
     if cluster is None or element_index >= cluster.max:
-      cluster_index = self.summary.next(cluster_index)
+      cluster_index = self.summary.successor(cluster_index)
       element_index = self.clusters[cluster_index].min
       return self.index(cluster_index, element_index)
 
-  # perfectly symmetric with next
-  def prev(self, x):
+  # perfectly symmetric with successor
+  def predecessor(self, x):
     if self.min is None or x <= self.max:
       return None
     elif x >= self.max:
@@ -156,11 +154,11 @@ class VEB(object):
     cluster = self.clusters[cluster_index]
 
     if cluster and element_index > cluster.min:
-      element_index = cluster.prev(element_index)
+      element_index = cluster.predecessor(element_index)
       return self.index(cluster_index, element_index)
 
     if cluster is None or element_index <= cluster.min:
-      cluster_index = self.summary.prev(cluster_index)
+      cluster_index = self.summary.predecessor(cluster_index)
       element_index = self.clusters[cluster_index].max
       return self.index(cluster_index, element_index)
 
@@ -229,12 +227,12 @@ def time_func(func, n):
 
 def test_data_structure(instance):
   insert_times = time_func(lambda: instance.insert(random.randint(0, pow(2, 16) - 1)), pow(2,15))
-  next_times = time_func(lambda: instance.next(random.randint(0, pow(2, 16) - 1)), pow(2,15))
-  prev_times = time_func(lambda: instance.prev(random.randint(0, pow(2, 16) - 1)), pow(2,15))
+  successor_times = time_func(lambda: instance.successor(random.randint(0, pow(2, 16) - 1)), pow(2,15))
+  predecessor_times = time_func(lambda: instance.predecessor(random.randint(0, pow(2, 16) - 1)), pow(2,15))
   delete_times = time_func(lambda: instance.delete(random.randint(0, pow(2, 16) - 1)), pow(2,15))
   print('Average insert time is ' + str(sum(insert_times)/len(insert_times)))
-  print('Average next time is ' + str(sum(next_times)/len(next_times)))
-  print('Average prev time is ' + str(sum(prev_times)/len(prev_times)))
+  print('Average successor time is ' + str(sum(successor_times)/len(successor_times)))
+  print('Average predecessor time is ' + str(sum(predecessor_times)/len(predecessor_times)))
   print('Average delete time is ' + str(sum(delete_times)/len(delete_times)))
 
 def main():
