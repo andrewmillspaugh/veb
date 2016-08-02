@@ -56,6 +56,19 @@ class VEB(object):
     else:
       return low in self.clusters[high]
 
+  def __iter__(self):
+    # empty tree
+    if self.min is None:
+      return
+
+    # special case for min value
+    yield self.min
+
+    current = self.min
+    while current != self.max:
+      current = self.successor(current)
+      yield current
+
   # the high order bits from a cluster
   # equivalent to i in x = i*sqrt(universe_size) + j
   def high(self, x):
@@ -96,7 +109,6 @@ class VEB(object):
     # we build the summary structure lazily
     if self.summary is None:
       self.summary = VEB(self.high(self.universe_size))
-
     # we build the clusters lazily
     if self.clusters[cluster_index] is None:
       self.clusters[cluster_index] = VEB(self.high(self.universe_size))
@@ -118,7 +130,7 @@ class VEB(object):
     # this tree is empty, or x is the biggest in it
     if self.min is None or x >= self.max:
       return None
-    elif x <= self.min:
+    elif x < self.min:
       return self.min
 
     cluster_index = self.high(x)
@@ -146,7 +158,7 @@ class VEB(object):
   def predecessor(self, x):
     if self.min is None or x <= self.max:
       return None
-    elif x >= self.max:
+    elif x > self.max:
       return self.max
 
     cluster_index = self.high(x)
@@ -236,9 +248,16 @@ def test_data_structure(instance):
   print('Average delete time is ' + str(sum(delete_times)/len(delete_times)))
 
 def main():
-  size = pow(2, 16)
-  test_data_structure(BitArray(size))
-  test_data_structure(VEB(size))
+  #size = pow(2, 16)
+  #test_data_structure(BitArray(size))
+  #test_data_structure(VEB(size))
+
+  veb = VEB(16)
+  values = [ v for v in range(8) ]
+  for value in values:
+    veb.insert(value)
+  print('Values: {}'.format(sorted(values)))
+  print('VEB: {}'.format(sorted(list(veb))))
 
 if __name__ == '__main__':
   main()
