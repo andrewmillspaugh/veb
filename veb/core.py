@@ -43,7 +43,7 @@ class VEB(object):
 
   def __contains__(self, x):
     # the easy cases
-    if self.min == None:
+    if self.min is None:
       return False
     elif self.min == x:
       return True
@@ -77,7 +77,7 @@ class VEB(object):
   def insert(self, x):
     # if nothing is stored in min, lazily store x in the min (as well as the max).
     # this is the only case in which x doesn't have to be recursively inserted
-    if self.min == None or self._universe_order == 1:
+    if self.min is None or self._universe_order == 1:
       self.min = self.max = x
       return
 
@@ -95,20 +95,20 @@ class VEB(object):
     element_index = self.low(x)
 
     # we build the summary structure lazily
-    if self.summary == None:
+    if self.summary is None:
       self.summary = VEB(self.high(self.universe_size))
 
     # we build the clusters lazily
-    if self.clusters[cluster_index] == None:
+    if self.clusters[cluster_index] is None:
       self.clusters[cluster_index] = VEB(self.high(self.universe_size))
 
     # if if the cluster doesn't have a min, we know we need to also update
     # the summary structure to reflect our insert
-    if self.clusters[cluster_index].min == None:
+    if self.clusters[cluster_index].min is None:
       self.summary.insert(cluster_index)
 
-    # if we went through the above branch where self.clusters[cluster_index].min == None,
-    # then we know that this cluster also has min == None, which means that this will
+    # if we went through the above branch where self.clusters[cluster_index].min is None,
+    # then we know that this cluster also has min is None, which means that this will
     # be a constant time operation. Therefore, we always only have one recursive call
     self.clusters[cluster_index].insert(element_index)
 
@@ -117,7 +117,7 @@ class VEB(object):
   # in that cluster for the first 1 bit (which will be the successor)
   def next(self, x):
     # this tree is empty, or x is the biggest in it
-    if self.min == None or x >= self.max:
+    if self.min is None or x >= self.max:
       return None
     elif x <= self.min:
       return self.min
@@ -138,10 +138,56 @@ class VEB(object):
     # than the max in the cluster. So, we'll instead look for the
     # next 1 bit in the summary structure, and then look through
     # that cluster for our successor
-    if cluster == None or element_index >= cluster.max:
+    if cluster is None or element_index >= cluster.max:
       cluster_index = self.summary.next(cluster_index)
       element_index = self.clusters[cluster_index].min
       return self.index(cluster_index, element_index)
+
+  def delete(self, x):
+    if self.min is None or x < self.min:
+      return
+    if self._universe_order == 1:
+      if x == self.min:
+        self.min = self.max = None
+      return
+    
+    # If we're trying to delete the minimum value, we've got
+    # to figure out what to set the minimum value to, so we
+    # need to search through the summary to find it
+    # TODO: Refactor this case into separate function
+    if x == self.min:
+      # in this case, we deleted the last value, so the
+      # structure is now completely empty
+      if self.summary is None or self.summary.min is None:
+        self.min = self.max = None
+        return
+      cluster_index = self.summary.min
+      element_index = self.clusters[cluster_index].min
+
+      # the new minimum is the first item in the next nonzero cluster
+      x = self.min = self.index(cluster_index, element_index)
+
+    # This is the more standard case where we don't have to deal
+    # with altering the minimum value
+    cluster_index = self.high(x)
+    element_index = self.low(x)
+    cluster = self.clusters[cluster_index]
+    if cluster is None:
+      return
+    cluster.delete(element_index)
+
+    if cluster.min is None:
+      self.summary.delete(cluster_index)
+
+    # we just deleted the max, so we need to find the predecessor
+    if x == self.max:
+      # we just deleted the second to last element, so max = min
+      if self.summary.max is None:
+        self.max = self.min
+      else:
+        cluster_index = self.summary.max
+        element_index = self.clusters[cluster_index].max
+        self.max = self.index(cluster_index, element_index)
 
 def test(condition):
   if condition:
@@ -163,11 +209,11 @@ def test_data_structure(instance):
   insert_times = time_func(lambda: instance.insert(random.randint(0, pow(2, 16) - 1)), pow(2,15))
   next_times = time_func(lambda: instance.next(random.randint(0, pow(2, 16) - 1)), pow(2,15))
   # prev_times = time_func(lambda: instance.prev(random.randint(0, pow(2, 16) - 1)), pow(2,15))
-  # delete_times = time_func(lambda: instance.delete(random.randint(0, pow(2, 16) - 1)), pow(2,15))
+  delete_times = time_func(lambda: instance.delete(random.randint(0, pow(2, 16) - 1)), pow(2,15))
   print('Average insert time is ' + str(sum(insert_times)/len(insert_times)))
   print('Average next time is ' + str(sum(next_times)/len(next_times)))
   # print('Average prev time is ' + str(sum(prev_times)/len(prev_times)))
-  # print('Average delete time is ' + str(sum(delete_times)/len(delete_times)))
+  print('Average delete time is ' + str(sum(delete_times)/len(delete_times)))
 
 def main():
   size = pow(2, 16)
