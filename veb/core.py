@@ -144,6 +144,27 @@ class VEB(object):
       element_index = self.clusters[cluster_index].min
       return self.index(cluster_index, element_index)
 
+  # perfectly symmetric with next
+  def prev(self, x):
+    if self.min is None or x <= self.max:
+      return None
+    elif x >= self.max:
+      return self.max
+
+    cluster_index = self.high(x)
+    element_index = self.low(x)
+    cluster = self.clusters[cluster_index]
+
+    if cluster and element_index > cluster.min:
+      element_index = cluster.prev(element_index)
+      return self.index(cluster_index, element_index)
+
+    if cluster is None or element_index <= cluster.min:
+      cluster_index = self.summary.prev(cluster_index)
+      element_index = self.clusters[cluster_index].max
+      return self.index(cluster_index, element_index)
+
+
   def delete(self, x):
     if self.min is None or x < self.min:
       return
@@ -209,11 +230,11 @@ def time_func(func, n):
 def test_data_structure(instance):
   insert_times = time_func(lambda: instance.insert(random.randint(0, pow(2, 16) - 1)), pow(2,15))
   next_times = time_func(lambda: instance.next(random.randint(0, pow(2, 16) - 1)), pow(2,15))
-  # prev_times = time_func(lambda: instance.prev(random.randint(0, pow(2, 16) - 1)), pow(2,15))
+  prev_times = time_func(lambda: instance.prev(random.randint(0, pow(2, 16) - 1)), pow(2,15))
   delete_times = time_func(lambda: instance.delete(random.randint(0, pow(2, 16) - 1)), pow(2,15))
   print('Average insert time is ' + str(sum(insert_times)/len(insert_times)))
   print('Average next time is ' + str(sum(next_times)/len(next_times)))
-  # print('Average prev time is ' + str(sum(prev_times)/len(prev_times)))
+  print('Average prev time is ' + str(sum(prev_times)/len(prev_times)))
   print('Average delete time is ' + str(sum(delete_times)/len(delete_times)))
 
 def main():
