@@ -2,6 +2,7 @@ import sys
 import math
 import time
 import random
+from collections import defaultdict
 
 # O(1) insert/delete
 # O(n) next/prev
@@ -38,7 +39,7 @@ class VEB(object):
     self.min = self.max = None
     self._universe_order = 1 << math.ceil(math.log2(self.universe_size) / 2)
     if self._universe_order > 1:
-      self.clusters = [None] * self.high(self.universe_size)
+      self.clusters = defaultdict(lambda: None)
       self.summary = None
 
   def __contains__(self, x):
@@ -150,7 +151,7 @@ class VEB(object):
       if x == self.min:
         self.min = self.max = None
       return
-    
+
     # If we're trying to delete the minimum value, we've got
     # to figure out what to set the minimum value to, so we
     # need to search through the summary to find it
