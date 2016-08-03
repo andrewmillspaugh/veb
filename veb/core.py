@@ -79,14 +79,12 @@ class VEB(object):
   # the high order bits from a cluster
   # equivalent to i in x = i*sqrt(universe_size) + j
   def high(self, x):
-    return math.ceil(x // self._universe_order)
     return x >> math.ceil(self._universe_order / 2)
 
   # the low order bits from a cluster
   # equivalent to j in x = i*sqrt(universe_size) + j
   def low(self, x):
-    return math.floor(x % self._universe_order)
-    return x & ( 1 << math.floor(self._universe_order / 2) - 1 )
+    return x & ( (1 << math.floor(self._universe_order / 2)) - 1)
 
   def index(self, i, j):
     return i * self._cluster_size + j
@@ -246,13 +244,10 @@ def main():
   #test_data_structure(BitArray(size))
   #test_data_structure(VEB(size))
 
-  veb = VEB(16)
-  values = [ v for v in range(9) ]
+  veb = VEB(256)
+  values = [ v for v in range(200) ]
   for val in values:
     veb.insert(val)
-
-  print('Values: {}'.format(sorted(values)))
-  print('VEB: {}'.format(list(veb)))
 
 if __name__ == '__main__':
   main()
