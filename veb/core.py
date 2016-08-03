@@ -4,6 +4,10 @@ import time
 import random
 from collections import defaultdict
 
+def assertEqual(a, b, msg = None):
+  if a != b:
+    raise Exception('{} does not equal {}! {}'.format(a, b, msg))
+
 class BitArray(object):
   def __init__(self, u):
     self.array = [0 for x in range(u)]
@@ -32,17 +36,15 @@ class BitArray(object):
 
 class VEB(object):
   def __init__(self, universe_size):
-    # universe_size = 2^universe_order
-    # universe_order = log2(universe_size)
-    # x = i*sqrt(u) + j
-    self.universe_size = universe_size
+    self.universe_size = int(universe_size)
     self.min = self.max = None
-    self._universe_order = math.log2(self.universe_size)
-    self._cluster_size = self.high(self.universe_size)
+    self.universe_order = math.log2(self.universe_size)
+    self.cluster_size = self.high(self.universe_size)
     if self.universe_size > 2:
+      self.num_clusters = math.ceil(self.universe_size / self.cluster_size)
       self.clusters = defaultdict(lambda: None)
-      self.clusters = [None] * math.ceil(self.universe_size/self._cluster_size)
-      self.summary = VEB(self._cluster_size)
+      self.clusters = [None] * self.num_clusters
+      self.summary = VEB(self.num_clusters)
     else:
       self.clusters = None
       self.summary = None
@@ -76,24 +78,44 @@ class VEB(object):
       current = self.successor(current)
       yield current
 
-  # the high order bits from a cluster
-  # equivalent to i in x = i*sqrt(universe_size) + j
   def high(self, x):
-    return x >> math.ceil(self._universe_order / 2)
+    return x >> math.floor(self.universe_order / 2)
 
-  # the low order bits from a cluster
-  # equivalent to j in x = i*sqrt(universe_size) + j
   def low(self, x):
-    return x & ( (1 << math.floor(self._universe_order / 2)) - 1)
+    return x & ( (1 << math.floor(self.universe_order / 2)) - 1)
 
   def index(self, i, j):
-    return i * self._cluster_size + j
+    return i * self.cluster_size + j
 
-  # we need to insert both into the appropriate cluster as well
-  # as insert into the summary structure, because we just inserted
-  # something into a cluster, so we better make sure that the
-  # summary structure reflects that
+  def member(self, x):
+    if x == self.min or x == self.max:
+      return True
+    elif self.universe_size <= 2:
+      return False
+    else:
+      cluster = self.clusters[self.high(x)]
+      if cluster != None:
+        return cluster.member(self.low(x))
+      else:
+        return False
+
+  def __str__(self):
+    summary = ''
+    if self.clusters is None:
+      return summary
+    for cluster in range(0, len(self.clusters)):
+      summary += '['
+      for element in range(0, self.cluster_size):
+        if self.member(cluster * self.cluster_size + element):
+          summary += '1'
+        else:
+          summary += '0'
+      summary += ']'
+    return self.summary.__str__() + '\n' + summary
+
   def insert(self, x):
+    if x > (self.universe_size - 1):
+      raise Exception('Cannot insert {} into universe sized {}!'.format(x, self.universe_size))
     if self.min is None:
       self.min = self.max = x
       return
@@ -113,16 +135,13 @@ class VEB(object):
     cluster = self.clusters[cluster_index]
 
     if cluster is None:
-      cluster = self.clusters[cluster_index] = VEB(self._cluster_size)
+      cluster = self.clusters[cluster_index] = VEB(self.cluster_size)
 
     if cluster.min is None:
       self.summary.insert(cluster_index)
 
     cluster.insert(element_index)
 
-  # first, we look in x's cluster (clusters[high(x)]) and then
-  # we look in the summary structure for the next 1 bit, and look
-  # in that cluster for the first 1 bit (which will be the successor)
   def successor(self, x):
     if self.universe_size <= 2:
       if x == 0 and self.max == 1:
@@ -170,7 +189,7 @@ class VEB(object):
   def delete(self, x):
     if self.min is None or x < self.min:
       return
-    if self._universe_order <= 1:
+    if self.universe_order <= 1:
       if x == self.min:
         self.min = self.max = None
       return
@@ -244,10 +263,12 @@ def main():
   #test_data_structure(BitArray(size))
   #test_data_structure(VEB(size))
 
-  veb = VEB(256)
-  values = [ v for v in range(200) ]
+  veb = VEB(17)
+
+  values = [ random.randint(0, 16) for _ in range(8) ]
   for val in values:
     veb.insert(val)
+  assert(list(veb) == sorted(values))
 
 if __name__ == '__main__':
   main()
