@@ -32,12 +32,19 @@ class BitArray(object):
 
 class VEB(object):
   def __init__(self, universe_size):
+    # universe_size = 2^universe_order
+    # universe_order = log2(universe_size)
     # x = i*sqrt(u) + j
     self.universe_size = universe_size
     self.min = self.max = None
-    self._universe_order = 1 << math.ceil(math.log2(self.universe_size) / 2)
-    if self._universe_order > 1:
+    self._universe_order = math.log2(self.universe_size)
+    self._cluster_size = self.high(self.universe_size)
+    if self.universe_size > 2:
       self.clusters = defaultdict(lambda: None)
+      self.clusters = [None] * math.ceil(self.universe_size/self._cluster_size)
+      self.summary = VEB(self._cluster_size)
+    else:
+      self.clusters = None
       self.summary = None
 
   def __contains__(self, x):
@@ -72,62 +79,58 @@ class VEB(object):
   # the high order bits from a cluster
   # equivalent to i in x = i*sqrt(universe_size) + j
   def high(self, x):
-    return x // self._universe_order
+    return math.ceil(x // self._universe_order)
+    return x >> math.ceil(self._universe_order / 2)
 
   # the low order bits from a cluster
   # equivalent to j in x = i*sqrt(universe_size) + j
   def low(self, x):
-    return x % self._universe_order
+    return math.floor(x % self._universe_order)
+    return x & ( 1 << math.floor(self._universe_order / 2) - 1 )
 
   def index(self, i, j):
-    return int(i*math.sqrt(self.universe_size) + j)
+    return i * self._cluster_size + j
 
   # we need to insert both into the appropriate cluster as well
   # as insert into the summary structure, because we just inserted
   # something into a cluster, so we better make sure that the
   # summary structure reflects that
   def insert(self, x):
-    # if nothing is stored in min, lazily store x in the min (as well as the max).
-    # this is the only case in which x doesn't have to be recursively inserted
-    if self.min is None or self._universe_order == 1:
+    if self.min is None:
       self.min = self.max = x
       return
 
-    # something is already in min, so we have to figure out where to put it and,
-    # because we know that the cluster isnt empty, we also have to deal with max
-
-    # the new x is smaller than the existing min, so we need to swap them
+    if x == self.min:
+      return
     if x < self.min:
       self.min, x = x, self.min
-    # the new x is bigger than the existing min, so we can blindly set it
     if x > self.max:
       self.max = x
 
+    if self.universe_size <= 2:
+      return
+
     cluster_index = self.high(x)
     element_index = self.low(x)
+    cluster = self.clusters[cluster_index]
 
-    # we build the summary structure lazily
-    if self.summary is None:
-      self.summary = VEB(self.high(self.universe_size))
-    # we build the clusters lazily
-    if self.clusters[cluster_index] is None:
-      self.clusters[cluster_index] = VEB(self.high(self.universe_size))
+    if cluster is None:
+      cluster = self.clusters[cluster_index] = VEB(self._cluster_size)
 
-    # if if the cluster doesn't have a min, we know we need to also update
-    # the summary structure to reflect our insert
-    if self.clusters[cluster_index].min is None:
+    if cluster.min is None:
       self.summary.insert(cluster_index)
 
-    # if we went through the above branch where self.clusters[cluster_index].min is None,
-    # then we know that this cluster also has min is None, which means that this will
-    # be a constant time operation. Therefore, we always only have one recursive call
-    self.clusters[cluster_index].insert(element_index)
+    cluster.insert(element_index)
 
   # first, we look in x's cluster (clusters[high(x)]) and then
   # we look in the summary structure for the next 1 bit, and look
   # in that cluster for the first 1 bit (which will be the successor)
   def successor(self, x):
-    # this tree is empty, or x is the biggest in it
+    if self.universe_size <= 2:
+      if x == 0 and self.max == 1:
+        return 1
+      else:
+        return None
     if self.min is None or x >= self.max:
       return None
     elif x < self.min:
@@ -137,19 +140,10 @@ class VEB(object):
     element_index = self.low(x)
     cluster = self.clusters[cluster_index]
 
-    # we know the sucessor is in this cluster because we have a
-    # valid cluster and the value we're looking for is smaller
-    # than the max. So, simply return the sucessor in this cluster.
     if cluster and element_index < cluster.max:
       element_index = cluster.successor(element_index)
       return self.index(cluster_index, element_index)
-
-    # we know the successor isn't here, because either the cluster
-    # is empty, or we asked for the successor of something bigger
-    # than the max in the cluster. So, we'll instead look for the
-    # next 1 bit in the summary structure, and then look through
-    # that cluster for our successor
-    if cluster is None or element_index >= cluster.max:
+    else:
       cluster_index = self.summary.successor(cluster_index)
       element_index = self.clusters[cluster_index].min
       return self.index(cluster_index, element_index)
@@ -178,7 +172,7 @@ class VEB(object):
   def delete(self, x):
     if self.min is None or x < self.min:
       return
-    if self._universe_order == 1:
+    if self._universe_order <= 1:
       if x == self.min:
         self.min = self.max = None
       return
@@ -253,11 +247,12 @@ def main():
   #test_data_structure(VEB(size))
 
   veb = VEB(16)
-  values = [ v for v in range(8) ]
-  for value in values:
-    veb.insert(value)
+  values = [ v for v in range(9) ]
+  for val in values:
+    veb.insert(val)
+
   print('Values: {}'.format(sorted(values)))
-  print('VEB: {}'.format(sorted(list(veb))))
+  print('VEB: {}'.format(list(veb)))
 
 if __name__ == '__main__':
   main()
