@@ -4,47 +4,17 @@ import time
 import random
 from collections import defaultdict
 
-def assertEqual(a, b, msg = None):
-  if a != b:
-    raise Exception('{} does not equal {}! {}'.format(a, b, msg))
-
-class BitArray(object):
-  def __init__(self, u):
-    self.array = [0 for x in range(u)]
-
-  def insert(self, x):
-    self.array[x] = 1
-
-  def delete(self, x):
-    self.array[x] = 0
-
-  def successor(self, x):
-    index = x + 1
-    for val in self.array[x + 1:]:
-      if val == 1:
-        return index
-      else:
-        index += 1
-
-  def predecessor(self, x):
-    index = x - 1
-    for val in self.array[x - 1:0:-1]:
-      if val == 1:
-        return index
-      else:
-        index -= 1
-
 class VEB(object):
-  def __init__(self, universe_size):
-    self.universe_size = int(universe_size)
+  def __init__(self, word_size):
     self.min = self.max = None
-    self.universe_order = math.log2(self.universe_size)
-    self.cluster_size = self.high(self.universe_size)
-    if self.universe_size > 2:
-      self.num_clusters = math.ceil(self.universe_size / self.cluster_size)
-      self.clusters = defaultdict(lambda: None)
-      self.clusters = [None] * self.num_clusters
-      self.summary = VEB(self.num_clusters)
+    self.word_size = word_size
+    self._summary_size = int(math.ceil(self.word_size / 2))
+    self._universe_size = pow(2, self.word_size)
+    self._num_clusters = 1 << self._summary_size
+    if self.word_size > 1:
+      #self.clusters = defaultdict(lambda: None)
+      self.clusters = [None] * self._num_clusters
+      self.summary = VEB(self._summary_size)
     else:
       self.clusters = None
       self.summary = None
@@ -55,7 +25,7 @@ class VEB(object):
       return False
     elif self.min == x:
       return True
-    elif x > self.universe_size - 1:
+    elif x > self._universe_size - 1:
       return False
 
     high = self.high(x)
@@ -79,18 +49,18 @@ class VEB(object):
       yield current
 
   def high(self, x):
-    return x >> math.floor(self.universe_order / 2)
+    return x >> int(self._summary_size)
 
   def low(self, x):
-    return x & ( (1 << math.floor(self.universe_order / 2)) - 1)
+    return x & ( (1 << int(self._summary_size)) - 1)
 
   def index(self, i, j):
-    return i * self.cluster_size + j
+    return i * self._summary_size + j
 
   def member(self, x):
     if x == self.min or x == self.max:
       return True
-    elif self.universe_size <= 2:
+    elif self.word_size == 1:
       return False
     else:
       cluster = self.clusters[self.high(x)]
@@ -100,22 +70,41 @@ class VEB(object):
         return False
 
   def __str__(self):
-    summary = ''
-    if self.clusters is None:
-      return summary
-    for cluster in range(0, len(self.clusters)):
-      summary += '['
-      for element in range(0, self.cluster_size):
-        if self.member(cluster * self.cluster_size + element):
-          summary += '1'
+    string = ''
+    if self.summary:
+      string += self.summary.__str__()
+
+    string += '\n(U = {})'.format(self._universe_size)
+
+    if self.clusters:
+      string += '\n'
+      for index in range(0, len(self.clusters)):
+        if self.clusters[index] is None:
+          string += '[EMPTY]'
         else:
-          summary += '0'
-      summary += ']'
-    return self.summary.__str__() + '\n' + summary
+          string += self.clusters[index].__str__().replace('\n', '')
+
+    return string
+
+    template = '-'.join('{' + str(x) + '}' for x in range(self.universe_size))
+    for element in iter(self):
+      template = template.format(element = 1)
+    return template
+    # if self.clusters is None:
+      # return summary
+    # for cluster in range(0, len(self.clusters)):
+      # summary += '['
+      # for element in range(0, self.cluster_size):
+        # if self.member(cluster * self.cluster_size + element):
+          # summary += '1'
+        # else:
+          # summary += '0'
+      # summary += ']'
+    # return self.summary.__str__() + '\n' + summary
 
   def insert(self, x):
-    if x > (self.universe_size - 1):
-      raise Exception('Cannot insert {} into universe sized {}!'.format(x, self.universe_size))
+    if x > self._universe_size - 1:
+      raise Exception('Cannot insert {}'.format(x))
     if self.min is None:
       self.min = self.max = x
       return
@@ -127,7 +116,7 @@ class VEB(object):
     if x > self.max:
       self.max = x
 
-    if self.universe_size <= 2:
+    if self.word_size == 1:
       return
 
     cluster_index = self.high(x)
@@ -135,7 +124,7 @@ class VEB(object):
     cluster = self.clusters[cluster_index]
 
     if cluster is None:
-      cluster = self.clusters[cluster_index] = VEB(self.cluster_size)
+      cluster = self.clusters[cluster_index] = VEB(self._summary_size)
 
     if cluster.min is None:
       self.summary.insert(cluster_index)
@@ -143,7 +132,7 @@ class VEB(object):
     cluster.insert(element_index)
 
   def successor(self, x):
-    if self.universe_size <= 2:
+    if self.word_size == 1:
       if x == 0 and self.max == 1:
         return 1
       else:
@@ -156,7 +145,6 @@ class VEB(object):
     cluster_index = self.high(x)
     element_index = self.low(x)
     cluster = self.clusters[cluster_index]
-
     if cluster and element_index < cluster.max:
       element_index = cluster.successor(element_index)
       return self.index(cluster_index, element_index)
@@ -189,7 +177,7 @@ class VEB(object):
   def delete(self, x):
     if self.min is None or x < self.min:
       return
-    if self.universe_order <= 1:
+    if self.word_size <= 1:
       if x == self.min:
         self.min = self.max = None
       return
@@ -248,27 +236,46 @@ def time_func(func, n):
     times.append(time.time() - start)
   return times
 
-def test_data_structure(instance):
-  insert_times = time_func(lambda: instance.insert(random.randint(0, pow(2, 16) - 1)), pow(2,15))
-  successor_times = time_func(lambda: instance.successor(random.randint(0, pow(2, 16) - 1)), pow(2,15))
-  predecessor_times = time_func(lambda: instance.predecessor(random.randint(0, pow(2, 16) - 1)), pow(2,15))
-  delete_times = time_func(lambda: instance.delete(random.randint(0, pow(2, 16) - 1)), pow(2,15))
-  print('Average insert time is ' + str(sum(insert_times)/len(insert_times)))
-  print('Average successor time is ' + str(sum(successor_times)/len(successor_times)))
-  print('Average predecessor time is ' + str(sum(predecessor_times)/len(predecessor_times)))
-  print('Average delete time is ' + str(sum(delete_times)/len(delete_times)))
-
 def main():
   #size = pow(2, 16)
-  #test_data_structure(BitArray(size))
   #test_data_structure(VEB(size))
 
-  veb = VEB(17)
+  veb = VEB(6)
+  veb.insert(0)
+  veb.insert(1)
+  veb.insert(2)
+  veb.insert(3)
+  veb.insert(4)
+  veb.insert(5)
+  print('after 0 comes {}'.format(veb.successor(0)))
+  print('after 1 comes {}'.format(veb.successor(1)))
+  print('after 2 comes {}'.format(veb.successor(2)))
+  return
+
+  for size in range(4, 175):
+    print('testing size = {}'.format(size))
+    for x in range(0, size):
+      print('testing x = {}'.format(x))
+      veb = VEB(size)
+      veb.insert(x)
+      for y in range(0, size):
+        if x == y:
+          assert(veb.member(y))
+        else:
+          assert(not veb.member(y))
+
+  return
+  print('veb is ')
+  for x in range(0, 16):
+    print('{} ? {}'.format(x, veb.member(x)))
+  return
 
   values = [ random.randint(0, 16) for _ in range(8) ]
   for val in values:
     veb.insert(val)
-  assert(list(veb) == sorted(values))
+  print('veb is ', list(veb))
+  print('sorted is ', sorted(set(values)))
+  assert(list(veb) == sorted(set(values)))
 
 if __name__ == '__main__':
   main()
